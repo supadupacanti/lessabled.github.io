@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Less Abled | Goal & Thought Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fff5f8; overflow: hidden; }
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 192, 203, 0.3); }
+        .sidebar-item:hover { transform: translateX(8px); background: #fdf2f8; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #f472b6; border-radius: 10px; }
+        .snake-canvas { background: #fff; border: 8px solid #fce7f3; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(244, 114, 182, 0.2); }
+        input[type=range] { -webkit-appearance: none; background: #fce7f3; height: 8px; border-radius: 5px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #f472b6; cursor: pointer; border: 2px solid white; }
+    </style>
+</head>
+<body x-data="setup()" x-init="initApp()">
+
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-screen w-64 bg-white border-r border-pink-100 p-6 flex flex-col z-50">
+        <div class="flex items-center gap-3 mb-10">
+            <img src="https://i.pinimg.com/originals/97/f0/a9/97f0a929bc2fe98deae27940b933df7d.gif" class="w-8 h-8">
+            <h1 class="text-2xl font-black text-pink-500 tracking-tighter">LESS ABLED</h1>
+        </div>
+
+        <nav class="flex-1 space-y-3">
+            <template x-for="item in menu">
+                <button @click="activeSection = item.id; if(item.id === 'goals') $nextTick(() => refreshChart())" 
+                        class="sidebar-item w-full flex items-center gap-4 p-4 rounded-2xl transition-all font-bold text-gray-500"
+                        :class="activeSection === item.id ? 'bg-pink-500 text-white shadow-lg' : 'hover:text-pink-500'">
+                    <span x-text="item.icon" class="text-xl"></span>
+                    <span x-text="item.label"></span>
+                </button>
+            </template>
+        </nav>
+
+        <div class="p-4 glass rounded-2xl text-center">
+            <p class="text-[10px] font-bold text-pink-400 uppercase tracking-tighter">Productivity Status</p>
+            <p class="text-sm font-black text-pink-600">DOING GOOD SON</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ml-64 h-screen overflow-y-auto custom-scroll p-12">
+        
+        <!-- Thoughts Section -->
+        <section x-show="activeSection === 'thoughts'" x-transition class="max-w-4xl mx-auto space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-4xl font-black text-gray-800 tracking-tight">Thought Canvas</h2>
+                <button @click="addTab()" class="bg-pink-500 text-white px-6 py-2 rounded-xl font-bold hover:bg-pink-600 transition">+ New Tab</button>
+            </div>
+
+            <div class="flex gap-2 overflow-x-auto py-2">
+                <template x-for="(tab, index) in thoughtsData">
+                    <div class="flex items-center glass rounded-2xl px-4 py-2 gap-2 group transition-all" :class="activeTab === index ? 'bg-pink-500 border-pink-500' : ''">
+                        <button @dblclick="renameTab(index)" @click="activeTab = index" class="font-bold whitespace-nowrap" :class="activeTab === index ? 'text-white' : 'text-pink-500'" x-text="tab.name"></button>
+                        <button @click="removeTab(index)" class="text-xs text-pink-300 hover:text-white" x-show="thoughtsData.length > 1">✕</button>
+                    </div>
+                </template>
+            </div>
+
+            <div class="bg-white rounded-[2rem] p-8 shadow-2xl border border-pink-100 min-h-[500px] flex flex-col">
+                <div class="flex-1 space-y-4">
+                    <template x-for="(entry, eIndex) in thoughtsData[activeTab].entries">
+                        <div class="p-4 bg-pink-50 rounded-2xl border-l-4 border-pink-400 flex justify-between group animate__animated animate__fadeInUp">
+                            <p class="font-medium text-gray-700" x-text="entry"></p>
+                            <button @click="thoughtsData[activeTab].entries.splice(eIndex, 1)" class="text-pink-200 hover:text-pink-500 opacity-0 group-hover:opacity-100 transition">Delete</button>
+                        </div>
+                    </template>
+                </div>
+                <input type="text" x-model="newThought" @keyup.enter="addThought()" 
+                       placeholder="Write a thought and hit Enter..." 
+                       class="mt-8 w-full p-5 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-pink-300 focus:bg-white outline-none transition-all font-semibold">
+            </div>
+        </section>
+
+        <!-- Goals Section -->
+        <section x-show="activeSection === 'goals'" x-transition class="max-w-5xl mx-auto space-y-8">
+            <div class="flex justify-between items-center">
+                <h2 class="text-4xl font-black text-gray-800">Mission Control 🎯</h2>
+                <div class="flex gap-3">
+                    <input x-model="newGoalTitle" placeholder="New Goal Name..." class="p-3 rounded-xl border-2 border-pink-100 outline-none focus:border-pink-400">
+                    <button @click="addGoal()" class="bg-pink-500 text-white px-6 rounded-xl font-bold shadow-lg shadow-pink-100 hover:scale-105 transition">Add</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Goal List -->
+                <div class="glass p-8 rounded-[2.5rem] space-y-6 max-h-[600px] overflow-y-auto custom-scroll">
+                    <template x-for="(goal, index) in goals" :key="goal.id">
+                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-pink-50 hover:shadow-md transition">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="font-black text-gray-700 text-lg" x-text="goal.title"></h4>
+                                <button @click="removeGoal(index)" class="text-pink-300 hover:text-pink-600 font-bold">✕ Remove</button>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <input type="range" x-model="goal.progress" @input="updateChart()" class="flex-1">
+                                <span class="w-12 text-right font-black text-pink-500" x-text="goal.progress + '%'"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Live Chart -->
+                <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center justify-center min-h-[400px]">
+                    <h3 class="font-bold text-gray-400 uppercase text-xs tracking-widest mb-6">Real-Time Progress Visualization</h3>
+                    <div class="w-full">
+                        <canvas id="liveGoalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Snake Game -->
+        <section x-show="activeSection === 'snake'" x-transition class="flex flex-col items-center justify-center min-h-[80vh] space-y-6">
+            <div class="text-center">
+                <h2 class="text-4xl font-black text-gray-800 mb-2">Pink Slither 🌸</h2>
+                <div class="bg-white px-8 py-2 rounded-full shadow-inner font-black text-pink-500 text-xl">Score: <span x-text="snakeScore">0</span></div>
+            </div>
+            <canvas id="snakeGame" width="400" height="400" class="snake-canvas"></canvas>
+            <button @click="startSnake()" class="bg-pink-500 text-white px-12 py-4 rounded-2xl font-black text-xl shadow-xl hover:scale-110 transition active:scale-95">PLAY / RESET</button>
+        </section>
+
+    </main>
+
+    <script>
+        function setup() {
+            return {
+                activeSection: 'thoughts',
+                activeTab: 0,
+                newThought: '',
+                newGoalTitle: '',
+                snakeScore: 0,
+                chartInstance: null,
+                menu: [
+                    { id: 'thoughts', icon: '💭', label: 'Thoughts' },
+                    { id: 'goals', icon: '🎯', label: 'Goals' },
+                    { id: 'snake', icon: '🐍', label: 'Games' }
+                ],
+                thoughtsData: [
+                    { name: 'Daily Rants', entries: ['Everything is pink!', 'Need more coffee.'] }
+                ],
+                goals: [
+                    { id: Date.now(), title: 'Learn Coding', progress: 45 },
+                    { id: Date.now()+1, title: 'Gym Consistency', progress: 70 }
+                ],
+
+                initApp() {
+                    // Start on Thoughts
+                },
+
+                // Thought Logic
+                addTab() {
+                    const name = prompt("Enter Tab Name:");
+                    if (name) this.thoughtsData.push({ name, entries: [] });
+                },
+                removeTab(index) {
+                    if (confirm('Delete this tab?')) {
+                        this.thoughtsData.splice(index, 1);
+                        this.activeTab = 0;
+                    }
+                },
+                renameTab(index) {
+                    const newName = prompt("New Name:", this.thoughtsData[index].name);
+                    if (newName) this.thoughtsData[index].name = newName;
+                },
+                addThought() {
+                    if (this.newThought.trim()) {
+                        this.thoughtsData[this.activeTab].entries.push(this.newThought);
+                        this.newThought = '';
+                    }
+                },
+
+                // Goal Logic
+                addGoal() {
+                    if (this.newGoalTitle.trim()) {
+                        this.goals.push({ id: Date.now(), title: this.newGoalTitle, progress: 0 });
+                        this.newGoalTitle = '';
+                        this.updateChart();
+                    }
+                },
+                removeGoal(index) {
+                    this.goals.splice(index, 1);
+                    this.updateChart();
+                },
+                refreshChart() {
+                    if (this.chartInstance) this.chartInstance.destroy();
+                    const ctx = document.getElementById('liveGoalChart').getContext('2d');
+                    this.chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: this.goals.map(g => g.title),
+                            datasets: [{
+                                data: this.goals.map(g => g.progress),
+                                backgroundColor: '#f472b6',
+                                borderRadius: 12,
+                                borderSkipped: false,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, max: 100, grid: { color: '#fce7f3' } },
+                                x: { grid: { display: false } }
+                            }
+                        }
+                    });
+                },
+                updateChart() {
+                    if (!this.chartInstance) {
+                        this.refreshChart();
+                        return;
+                    }
+                    this.chartInstance.data.labels = this.goals.map(g => g.title);
+                    this.chartInstance.data.datasets[0].data = this.goals.map(g => g.progress);
+                    this.chartInstance.update('none'); // Update without animation for real-time feel
+                },
+
+                // Snake Logic
+                startSnake() {
+                    const canvas = document.getElementById('snakeGame');
+                    const ctx = canvas.getContext('2d');
+                    const box = 20;
+                    let snake = [{ x: 10 * box, y: 10 * box }];
+                    let food = { x: Math.floor(Math.random()*19+1)*box, y: Math.floor(Math.random()*19+1)*box };
+                    let score = 0;
+                    let d = "RIGHT";
+                    this.snakeScore = 0;
+
+                    const direction = (e) => {
+                        if(e.keyCode == 37 && d != "RIGHT") d = "LEFT";
+                        else if(e.keyCode == 38 && d != "DOWN") d = "UP";
+                        else if(e.keyCode == 39 && d != "LEFT") d = "RIGHT";
+                        else if(e.keyCode == 40 && d != "UP") d = "DOWN";
+                    };
+                    document.addEventListener("keydown", direction);
+
+                    if(window.gameInt) clearInterval(window.gameInt);
+                    window.gameInt = setInterval(() => {
+                        ctx.fillStyle = "white";
+                        ctx.fillRect(0,0,400,400);
+
+                        for(let i=0; i<snake.length; i++){
+                            ctx.fillStyle = i==0 ? "#f472b6" : "#fce7f3";
+                            ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                        }
+
+                        ctx.font = "20px Arial";
+                        ctx.fillText("🌸", food.x, food.y + 18);
+
+                        let sX = snake[0].x;
+                        let sY = snake[0].y;
+                        if(d=="LEFT") sX -= box;
+                        if(d=="UP") sY -= box;
+                        if(d=="RIGHT") sX += box;
+                        if(d=="DOWN") sY += box;
+
+                        if(sX == food.x && sY == food.y){
+                            this.snakeScore++;
+                            food = { x: Math.floor(Math.random()*19+1)*box, y: Math.floor(Math.random()*19+1)*box };
+                        } else {
+                            snake.pop();
+                        }
+
+                        let head = {x: sX, y: sY};
+                        if(sX < 0 || sX >= 400 || sY < 0 || sY >= 400 || snake.some(s => s.x == head.x && s.y == head.y)){
+                            clearInterval(window.gameInt);
+                            alert("Game Over! Try again!");
+                        }
+                        snake.unshift(head);
+                    }, 120);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
